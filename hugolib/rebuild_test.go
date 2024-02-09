@@ -1261,3 +1261,27 @@ func BenchmarkRebuildContentFileChange(b *testing.B) {
 		// fmt.Println(bb.LogString())
 	}
 }
+
+func TestRebuildConcat(t *testing.T) {
+	files := `
+-- hugo.toml --
+baseURL = "https://example.com"
+disableLiveReload = true
+-- assets/a.css --
+a
+-- assets/b.css --
+b
+-- layouts/index.html --
+{{ $a := resources.Get "a.css" }}
+{{ $b := resources.Get "b.css" }}
+{{ $ab := slice $a $b | resources.Concat "ab.css" }}
+ab: {{ $ab.Content | safeCSS }}
+`
+	b := TestRunning(t, files)
+
+	b.AssertFileContent("public/index.html", "ab: a\nb\n")
+
+	b.EditFileReplaceAll("assets/a.css", "a", "a edited").Build()
+
+	b.AssertFileContent("public/index.html", "ab: a edited\nb\n")
+}
